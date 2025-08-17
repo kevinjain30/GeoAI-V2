@@ -8,6 +8,68 @@ import ResultsModal from './components/ResultsModal';
 import HistoryPanel from './components/HistoryPanel';
 import { AnalysisResult, Coordinates } from './types';
 
+// Mock function to create a demo change detection image
+const createMockAnalysisImage = (location: Coordinates): Promise<string> => {
+  return new Promise((resolve) => {
+    // Create a canvas to generate a mock satellite change detection image
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = 800;
+    canvas.height = 600;
+    
+    // Background
+    ctx.fillStyle = '#2d5016'; // Dark green background
+    ctx.fillRect(0, 0, 800, 600);
+    
+    // Add some "satellite imagery" patterns
+    for (let i = 0; i < 100; i++) {
+      ctx.fillStyle = `rgb(${45 + Math.random() * 40}, ${80 + Math.random() * 40}, ${16 + Math.random() * 20})`;
+      ctx.fillRect(Math.random() * 800, Math.random() * 600, Math.random() * 20, Math.random() * 20);
+    }
+    
+    // Add change detection areas
+    // Red areas (significant change)
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(400, 200, 50, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.arc(600, 400, 30, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Yellow areas (moderate change)
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(200, 300, 25, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.arc(650, 150, 35, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Blue areas (water)
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(50, 450, 200, 100);
+    
+    // Add text overlay
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 24px Arial';
+    ctx.fillText('SatelliteVision - Change Detection Analysis', 50, 50);
+    
+    ctx.font = '16px Arial';
+    ctx.fillText(`Location: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`, 50, 580);
+    ctx.fillText('Time Period: 2021-2024 | Data: Sentinel-2', 400, 580);
+    
+    // Convert canvas to blob URL
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(URL.createObjectURL(blob));
+      }
+    }, 'image/jpeg', 0.8);
+  });
+};
+
 function App() {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
@@ -31,17 +93,15 @@ function App() {
     }
   }, []);
 
-  // This function now directly controls the map after a search or click.
   const handleLocationSelect = (coords: Coordinates, address?: string) => {
     setSelectedLocation(coords);
     setSelectedAddress(address || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
     setError(null);
 
-    // Directly command the map to move.
     if (mapRef.current) {
       const map = mapRef.current.getMap();
       if (map) {
-        map.panTo(coords); // Use panTo for a smooth transition
+        map.panTo(coords);
         if (map.getZoom() < 10) {
           map.setZoom(12);
         }
@@ -59,20 +119,14 @@ function App() {
     setError(null);
 
     try {
-      const response = await fetch('/api/detect-change', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: selectedLocation.lat, lng: selectedLocation.lng }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const blob = await response.blob();
+      // Simulate processing time (2-4 seconds)
+      await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
+      
+      // Create mock analysis image
+      const imageUrl = await createMockAnalysisImage(selectedLocation);
+      
       const newResult: AnalysisResult = {
-        imageUrl: URL.createObjectURL(blob),
+        imageUrl,
         location: selectedLocation,
         timestamp: new Date().toISOString(),
         analysisId: `analysis_${Date.now()}`,
@@ -86,9 +140,9 @@ function App() {
       setViewingResult(newResult);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      setError(errorMessage);
-      console.error('Analysis failed:', err);
+      const errorMessage = 'Demo analysis completed successfully!';
+      setError(null); // Don't show error for demo
+      console.log('Demo analysis:', err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -132,6 +186,10 @@ function App() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+                {/* Demo Badge */}
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                  DEMO MODE
+                </span>
                 <button
                     onClick={() => setIsHistoryOpen(true)}
                     className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -152,6 +210,17 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Demo Notice */}
+        <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <Info className="w-5 h-5 text-yellow-600 mr-2" />
+            <p className="text-yellow-800">
+              <strong>Demo Mode:</strong> This is a demonstration version that generates mock change detection results. 
+              The full version connects to real satellite data processing services.
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Map */}
           <div className="lg:col-span-2">
@@ -212,7 +281,7 @@ function App() {
                   ) : (
                     <>
                       <Satellite className="w-4 h-4" />
-                      <span>Start Analysis</span>
+                      <span>Start Demo Analysis</span>
                     </>
                   )}
                 </button>
@@ -227,6 +296,21 @@ function App() {
           </div>
         </div>
       </main>
+
+      {/* Error Display */}
+      {error && (
+        <div className="fixed top-20 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg z-50 max-w-md">
+          <div className="flex justify-between items-start">
+            <span className="text-sm">{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="ml-2 text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overlays */}
       {isAnalyzing && <LoadingOverlay />}
